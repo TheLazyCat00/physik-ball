@@ -30,11 +30,24 @@ axVY = Axis(
 	fig[1, 2], title = "vY",
 	xlabel = "Zeit (s)", ylabel = "vy (m/s)")
 
-limitValue = 2.0
+limitValue = Observable(2.0)
 axVector = Axis(
-	fig[2, 1:2], title = "Echtzeit Impulsvektor Δp",
+	fig[2, 1], title = "Echtzeit Impulsvektor Δp",
 	xlabel = "Δpx (kg*m/s)", ylabel = "Δpy (kg*m/s)",
-	aspect = DataAspect(), limits = (-limitValue, limitValue, -limitValue, limitValue))
+	aspect = DataAspect())
+
+# Die Magnitude-Achse (jetzt ohne ungültige Attribute)
+axMag = Axis(
+	fig[2, 2], title = "Magnitude")
+
+# Alles Verstecken über Funktionen statt Attribute
+hidedecorations!(axMag) # Versteckt Ticks, Labels, Grids
+hidespines!(axMag)      # Versteckt die Rahmenlinien
+
+on(limitValue) do val
+	limits!(axVector, -val, val, -val, val)
+end
+limitValue[] = 2.0
 
 deregister_interaction!(axVX, :rectanglezoom)
 deregister_interaction!(axVY, :rectanglezoom)
@@ -42,8 +55,8 @@ deregister_interaction!(axVector, :rectanglezoom)
 
 lines!(axVX, timeData, vXData, color = :cyan)
 lines!(axVY, timeData, vYData, color = :magenta)
-hlines!(axVector, [0], color = :white, alpha = 0.3)
-vlines!(axVector, [0], color = :white, alpha = 0.3)
+hlines!(axVector, [0], color = :white, alpha = 0.2)
+vlines!(axVector, [0], color = :white, alpha = 0.2)
 
 tStart = Observable(NaN)
 tEnd = Observable(NaN)
@@ -61,6 +74,20 @@ Makie.arrows2d!(
 	color = :yellow, shaftwidth = 4.0,
 	tiplength = 0.2, tipwidth = 0.2)
 
+lines!(
+	axVector, lift(d -> [Point2f(0, 0), Point2f(0, norm(d[1]))], arrowDir),
+	color = (:white, 0.4), linewidth = 8)
+
+magValueText = Observable("0.000\nkg*m/s")
+
+# Text im axMag zentrieren
+text!(
+	axMag, 0.5, 0.5,
+	text = magValueText,
+	color = :white, fontsize = 45,
+	align = (:center, :center),
+	space = :relative)
+
 isDragging = Observable(false)
 
 function updateImpulse(ts, te)
@@ -71,12 +98,14 @@ function updateImpulse(ts, te)
 	vNach = Point2f(vXData[idxE], vYData[idxE])
 	
 	deltaP = ballMass .* (vNach - vVor)
-	arrowDir[] = [Point2f(deltaP[1], deltaP[2])]
+	magnitude = norm(deltaP)
 	
-	maxVal = max(abs(deltaP[1]), abs(deltaP[2]))
-	if maxVal > limitValue
-		newLim = maxVal * 1.2
-		limits!(axVector, -newLim, newLim, -newLim, newLim)
+	arrowDir[] = [Point2f(deltaP[1], deltaP[2])]
+	magValueText[] = "$(round(magnitude, digits=3))\nkg*m/s"
+	
+	maxVal = max(abs(deltaP[1]), abs(deltaP[2]), magnitude)
+	if maxVal > limitValue[]
+		limitValue[] = maxVal * 1.3
 	end
 	return deltaP
 end
@@ -90,8 +119,7 @@ on(events(axVX.scene).mousebutton) do event
 			isDragging[] = true
 		elseif event.action == Mouse.release
 			isDragging[] = false
-			finalDP = updateImpulse(tStart[], tEnd[])
-			println("Δp = $(round.(finalDP, digits=3)) kg*m/s")
+			updateImpulse(tStart[], tEnd[])
 		end
 	end
 end
@@ -103,5 +131,7 @@ on(events(axVX.scene).mouseposition) do pos
 		updateImpulse(tStart[], tEnd[])
 	end
 end
+
+colsize!(fig.layout, 1, Relative(0.8))
 
 display(fig)
