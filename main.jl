@@ -7,13 +7,13 @@ using LinearAlgebra
 set_theme!(theme_dark())
 
 df = CSV.read(
-	"Physik_Kopfball.csv", 
+	"Physik_Kopfball.csv",
 	DataFrame)
 
 const ballMass = 0.4
 
 rename!(
-	df, 
+	df,
 	Dict(
 		"Video-Auswertung: Zeit (s)" => :t,
 		"Video-Auswertung: X-Geschwindigkeit (m/s)" => :vx,
@@ -28,20 +28,20 @@ fig = Figure(
 	size = (800, 800))
 
 axVX = Axis(
-	fig[1:2, 1], 
-	title = "vX", 
-	xlabel = "Zeit (s)", 
+	fig[1:2, 1],
+	title = "vX",
+	xlabel = "Zeit (s)",
 	ylabel = "vx (m/s)")
 
 axVY = Axis(
-	fig[1:2, 2], 
-	title = "vY", 
-	xlabel = "Zeit (s)", 
+	fig[1:2, 2],
+	title = "vY",
+	xlabel = "Zeit (s)",
 	ylabel = "vy (m/s)")
 
 axVector = Axis(
-	fig[3:4, 1], 
-	title = "Impulsvektor Δp", 
+	fig[3:4, 1],
+	title = "Impulsvektor Δp",
 	aspect = DataAspect())
 
 axValues = Axis(
@@ -77,11 +77,11 @@ arrowPos = Observable([Point2f(0, 0)])
 arrowDir = Observable([Point2f(0, 0)])
 
 Makie.arrows2d!(
-	axVector, 
-	arrowPos, 
+	axVector,
+	arrowPos,
 	arrowDir,
-	color = :yellow, 
-	shaftwidth = 2, 
+	color = :yellow,
+	shaftwidth = 2,
 	markerspace = :pixel)
 
 magValueText = Observable("Δp: 0.000 kg*m/s")
@@ -90,7 +90,7 @@ forceValueText = Observable("F: 0.0 N")
 text!(
 	axValues, 0.1, 0.6,
 	text = magValueText,
-	color = :gray70, 
+	color = :gray70,
 	fontsize = 28,
 	align = (:left, :center),
 	space = :relative)
@@ -98,7 +98,7 @@ text!(
 text!(
 	axValues, 0.1, 0.4,
 	text = forceValueText,
-	color = :orange, 
+	color = :orange,
 	fontsize = 28,
 	align = (:left, :center),
 	space = :relative)
@@ -137,8 +137,8 @@ function updatePhysics(ts, te)
 	forceValueText[] = "F: $(round(fAvg, digits=1)) N"
 	
 	maxVal = max(abs(dp[1]), abs(dp[2]), mag)
-	if maxVal > limitValue[] 
-		limitValue[] = maxVal * 1.3 
+	if maxVal > limitValue[]
+		limitValue[] = maxVal * 1.3
 	end
 end
 
