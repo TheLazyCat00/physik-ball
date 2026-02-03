@@ -86,22 +86,21 @@ Makie.arrows2d!(
 
 magValueText = Observable("0.000")
 
-# Magnitude-Text dezent am rechten Rand
 text!(
 	axVector, 
-	lift(r -> Point2f(r.widths[1] - 15, r.widths[2] / 2), axVector.scene.px_area),
+	lift(v -> Point2f(v.widths[1] - 15, v.widths[2] / 2), axVector.scene.viewport),
 	text = magValueText,
-	color = :gray70, 
-	fontsize = 22,
+	color = :gray60, 
+	fontsize = 20,
 	align = (:right, :center),
 	space = :pixel)
 
 text!(
 	axVector, 
-	lift(r -> Point2f(r.widths[1] - 15, r.widths[2] / 2 - 25), axVector.scene.px_area),
+	lift(v -> Point2f(v.widths[1] - 15, v.widths[2] / 2 - 22), axVector.scene.viewport),
 	text = "kg*m/s",
-	color = :gray50, 
-	fontsize = 12,
+	color = :gray40, 
+	fontsize = 11,
 	align = (:right, :center),
 	space = :pixel)
 
