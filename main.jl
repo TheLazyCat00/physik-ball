@@ -7,16 +7,10 @@ using NativeFileDialog
 
 set_theme!(theme_dark())
 
-# File selection
-fileName = pick_file(filterlist="csv")
-if isempty(fileName)
-	println("No file selected. Exiting.")
-	exit()
-end
-
-println("Selected: $fileName")
-
-df = CSV.read(fileName, DataFrame)
+# Data Observables
+timeData = Observable(Float64[])
+vXData = Observable(Float64[])
+vYData = Observable(Float64[])
 
 fig = Figure(size = (1000, 800))
 
@@ -31,22 +25,35 @@ hidedecorations!(axValues); hidespines!(axValues)
 
 gsControls = GridLayout(gsBottom[1, 3])
 
-Label(gsControls[1, 1], "Mass (kg)")
+loadBtn = Button(gsControls[1, 1], label = "Load CSV")
 
-mass_sl = Slider(gsControls[3, 1], range = 0.1:0.1:10.0, startvalue = 0.4, horizontal = false, height=Relative(0.7))
+Label(gsControls[2, 1], "Mass (kg)")
+
+mass_sl = Slider(gsControls[4, 1], range = 0.1:0.1:10.0, startvalue = 0.4, horizontal = false, height=Relative(0.7))
 objectMass = mass_sl.value
-Label(gsControls[2, 1], lift(x -> "$(round(x, digits=2)) kg", objectMass))
+Label(gsControls[3, 1], lift(x -> "$(round(x, digits=2)) kg", objectMass))
 
-rename!(
-	df,
-	names(df)[1] => :t,
-	names(df)[4] => :vx,
-	names(df)[5] => :vy
-)
-
-timeData = Float64.(df.t)
-vXData = Float64.(df.vx)
-vYData = Float64.(df.vy)
+on(loadBtn.clicks) do _
+	fileName = pick_file(filterlist="csv")
+	if !isempty(fileName)
+		try
+			df = CSV.read(fileName, DataFrame)
+			rename!(
+				df,
+				names(df)[1] => :t,
+				names(df)[4] => :vx,
+				names(df)[5] => :vy
+			)
+			timeData[] = Float64.(df.t)
+			vXData[] = Float64.(df.vx)
+			vYData[] = Float64.(df.vy)
+			autolimits!(axVX)
+			autolimits!(axVY)
+		catch e
+			println("Error loading CSV: $e")
+		end
+	end
+end
 
 
 limitValue = Observable(2.0)
@@ -107,18 +114,28 @@ text!(
 isDragging = Observable(false)
 
 function interpolateV(tTarget)
-	idx2 = findfirst(x -> x >= tTarget, timeData)
+	times = timeData[]
+	vxs = vXData[]
+	vys = vYData[]
 	
-	if isnothing(idx2) return Point2f(vXData[end], vYData[end]) end
-	if idx2 == 1 return Point2f(vXData[1], vYData[1]) end
+	if isempty(times)
+		return Point2f(0, 0)
+	end
+	
+	idx2 = findfirst(x -> x >= tTarget, times)
+	
+	if isnothing(idx2) return Point2f(vxs[end], vys[end]) end
+	if idx2 == 1 return Point2f(vxs[1], vys[1]) end
 	
 	idx1 = idx2 - 1
-	t1, t2 = timeData[idx1], timeData[idx2]
+	t1, t2 = times[idx1], times[idx2]
+	
+	if t2 == t1 return Point2f(vxs[idx1], vys[idx1]) end
 	
 	frac = (tTarget - t1) / (t2 - t1)
 	
-	vx = vXData[idx1] + frac * (vXData[idx2] - vXData[idx1])
-	vy = vYData[idx1] + frac * (vYData[idx2] - vYData[idx1])
+	vx = vxs[idx1] + frac * (vxs[idx2] - vxs[idx1])
+	vy = vys[idx1] + frac * (vys[idx2] - vys[idx1])
 	
 	return Point2f(vx, vy)
 end
