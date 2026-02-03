@@ -3,52 +3,51 @@ using DataFrames
 using GLMakie
 using Unitful
 using LinearAlgebra
+using NativeFileDialog
 
 set_theme!(theme_dark())
 
-df = CSV.read(
-	"Physik_Kopfball.csv",
-	DataFrame)
+# File selection
+fileName = pick_file(filterlist="csv")
+if isempty(fileName)
+	println("No file selected. Exiting.")
+	exit()
+end
 
-const ballMass = 0.4
+println("Selected: $fileName")
+
+df = CSV.read(fileName, DataFrame)
+
+fig = Figure(size = (1000, 800))
+
+gsTop = GridLayout(fig[1, 1])
+axVX = Axis(gsTop[1, 1], title = "vX", xlabel = "Time (s)", ylabel = "vx (m/s)")
+axVY = Axis(gsTop[1, 2], title = "vY", xlabel = "Time (s)", ylabel = "vy (m/s)")
+
+gsBottom = GridLayout(fig[2, 1])
+axVector = Axis(gsBottom[1, 1], title = "Momentum Vector Δp", aspect = DataAspect())
+axValues = Axis(gsBottom[1, 2])
+hidedecorations!(axValues); hidespines!(axValues)
+
+gsControls = GridLayout(gsBottom[1, 3])
+
+Label(gsControls[1, 1], "Mass (kg)")
+
+mass_sl = Slider(gsControls[3, 1], range = 0.1:0.1:10.0, startvalue = 0.4, horizontal = false, height=Relative(0.7))
+objectMass = mass_sl.value
+Label(gsControls[2, 1], lift(x -> "$(round(x, digits=2)) kg", objectMass))
 
 rename!(
 	df,
-	Dict(
-		"Video-Auswertung: Zeit (s)" => :t,
-		"Video-Auswertung: X-Geschwindigkeit (m/s)" => :vx,
-		"Video-Auswertung: Y-Geschwindigkeit (m/s)" => :vy
-	))
+	names(df)[1] => :t,
+	names(df)[4] => :vx,
+	names(df)[5] => :vy
+)
 
 timeData = Float64.(df.t)
 vXData = Float64.(df.vx)
 vYData = Float64.(df.vy)
 
-fig = Figure(
-	size = (800, 800))
-
-axVX = Axis(
-	fig[1:2, 1],
-	title = "vX",
-	xlabel = "Zeit (s)",
-	ylabel = "vx (m/s)")
-
-axVY = Axis(
-	fig[1:2, 2],
-	title = "vY",
-	xlabel = "Zeit (s)",
-	ylabel = "vy (m/s)")
-
-axVector = Axis(
-	fig[3:4, 1],
-	title = "Impulsvektor Δp",
-	aspect = DataAspect())
-
-axValues = Axis(
-	fig[3:4, 2])
-
-hidedecorations!(axValues)
-hidespines!(axValues)
 
 limitValue = Observable(2.0)
 on(limitValue) do val
@@ -59,6 +58,8 @@ limitValue[] = 2.0
 
 deregister_interaction!(axVX, :rectanglezoom)
 deregister_interaction!(axVY, :rectanglezoom)
+deregister_interaction!(axVector, :rectanglezoom)
+deregister_interaction!(axValues, :rectanglezoom)
 
 lines!(axVX, timeData, vXData, color = :cyan)
 lines!(axVY, timeData, vYData, color = :magenta)
@@ -125,10 +126,10 @@ end
 function updatePhysics(ts, te)
 	dt = abs(te - ts)
 	
-	vVor = interpolateV(ts)
-	vNach = interpolateV(te)
+	vBefore = interpolateV(ts)
+	vAfter = interpolateV(te)
 	
-	dp = ballMass .* (vNach - vVor)
+	dp = objectMass[] .* (vAfter - vBefore)
 	mag = norm(dp)
 	fAvg = dt > 0 ? mag / dt : 0.0
 	
@@ -139,6 +140,12 @@ function updatePhysics(ts, te)
 	maxVal = max(abs(dp[1]), abs(dp[2]), mag)
 	if maxVal > limitValue[]
 		limitValue[] = maxVal * 1.3
+	end
+end
+
+on(objectMass) do _
+	if !isnan(tStart[]) && !isnan(tEnd[])
+		updatePhysics(tStart[], tEnd[])
 	end
 end
 
