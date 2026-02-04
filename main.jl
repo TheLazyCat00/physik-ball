@@ -170,22 +170,28 @@ function registerInteractionLogic(ax)
 	on(events(ax.scene).mousebutton) do event
 		if event.button == Mouse.left
 			if event.action == Mouse.press
-				pos = mouseposition(ax.scene)
-				tStart[] = pos[1]
-				tEnd[] = pos[1]
-				isDragging[] = true
+				if is_mouseinside(ax.scene)
+					pos = mouseposition(ax.scene)
+					tStart[] = pos[1]
+					tEnd[] = pos[1]
+					isDragging[] = true
+				end
 			elseif event.action == Mouse.release
 				isDragging[] = false
-				updatePhysics(tStart[], tEnd[])
+				if !isnan(tStart[]) && !isnan(tEnd[])
+					updatePhysics(tStart[], tEnd[])
+				end
 			end
 		end
 	end
 
 	on(events(ax.scene).mouseposition) do pos
 		if isDragging[]
-			axPos = mouseposition(ax.scene)
-			tEnd[] = axPos[1]
-			updatePhysics(tStart[], tEnd[])
+			if is_mouseinside(ax.scene)
+				axPos = mouseposition(ax.scene)
+				tEnd[] = axPos[1]
+				updatePhysics(tStart[], tEnd[])
+			end
 		end
 	end
 end
